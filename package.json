@@ -1,0 +1,32 @@
+{
+  "name": "playground",
+  "version": "1.0.0",
+  "description": "AZSLc live",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "bootstrap": "^3.4.1",
+    "bootstrap-toggle": "^2.2.2",
+    "bs58": "^4.0.1",
+    "expand-tilde": "^2.0.2",
+    "express": "^4.17.0",
+    "express-basic-auth": "^1.2.0",
+    "file-type": "^11.1.0",
+    "forever": "^1.0.0",
+    "jquery": "^3.4.1",
+    "jslint": "^0.12.1",
+    "popper.js": "^1.14.7",
+    "read-chunk": "^3.2.0",
+    "serve-static": "^1.14.1",
+    "tmp": "^0.1.0"
+  },
+  "devDependencies": {
+    "eslint-config-strongloop": "^2.1.0"
+  }
+}

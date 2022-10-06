@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <title>AZSL Playground</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="bootstrap-toggle.min.css">
+
+    <!-- JavaScript -->
+    <script src="jquery.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="bootstrap-toggle.min.js"></script>
+
+    <style type="text/css" media="screen">
+        .ace_editor,
+        .toolbar {
+            border: 1px solid lightgray;
+            margin: auto;
+            width: 100%;
+        }
+
+        .container-fluid {
+            width: 99%;
+            padding-right:10px;
+            padding-left:0px;
+            margin-right:auto;
+            margin-left:auto;
+        }
+    </style>
+</head>
+<body onload=fillup_versions_dropdown()>
+
+<nav class="navbar navbar-inverse">
+  <div class="container-fluid">
+    <div class="navbar-header">
+      <a class="navbar-brand" href="#">AZSL Playground</a>
+    </div>
+    <ul class="nav navbar-nav">
+      <li class="active"><a href="#">Home</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="container-fluid">
+    <div class="row">
+        <!-- left editor -->
+        <div class="col-sm-5">
+            <div id="savebar"></div>
+            <div id="editor"></div>
+        </div>
+        <!-- center toolbar -->
+        <div class="col-sm-2">
+            <div class="row">
+                <div class="panel panel-default">
+                    <div class="panel-heading">AZSLc build</div>
+                    <div class="panel-body">
+                        <div class="row">
+                            <div class="dropdown">
+                                <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown">Version
+                                    <span class="caret"></span></button>
+                                <ul class="dropdown-menu" id="versionsdropdown">
+                                </ul>
+                            </div>
+                            <label id="selectedversion"></label>
+                        </div>
+                        <div class="row">
+                            <button id="compilebutton" type="button" class="btn btn-primary btn-lg" onclick="build('azsl')">Compile</button>
+                            Auto:
+                            <input id="toggleauto" type="checkbox" data-toggle="toggle" checked=true>
+                        </div>
+                        <div class="row">
+                            <div id=result_badge></div>
+                        </div>
+                        <div class="row">
+                            <br />
+                            <div class="input-group">
+                                <span class="input-group-addon">Args</span>
+                                <input id="cmdline" type="text" class="form-control" placeholder="e.g --help">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="checkbox">
+                                <label><input id="astyle" type="checkbox" value="">Artistic style format</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="panel panel-default">
+                    <div class="panel-heading">DXC build</div>
+                    <div class="panel-body">
+                        <div class="row">
+                            <button id="compilebuttonDXC" type="button" class="btn btn-primary btn-lg" onclick="build('dxc')">Compile</button>
+                            Auto:
+                            <input id="toggleautoDXC" type="checkbox" data-toggle="toggle" checked=true>
+                        </div>
+                        <div class="row">
+                            <div id="result_badge2"></div>
+                        </div>
+                        <div class="row">
+                            <br />
+                            <div class="input-group">
+                                <span class="input-group-addon">Args</span>
+                                <input id="cmdlineDXC" type="text" class="form-control" value="/T ps_6_2 /E MainPS">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- right editor -->
+        <div class="col-sm-5">
+            <div class="row">
+                <div class="panel panel-info">
+                    <div class="panel-heading">AZSLc's message</div>
+                    <div class="panel-body">
+                        <samp id="azslc_output"></samp>
+                    </div>
+                </div>
+            </div>
+            <!-- toolbar on top of azslc result editor -->
+            <div class="row">
+                <button type="button" class="btn" onclick=copy_result()>Copy</button>
+                <div id="minibar1" class="btn-group", role="group">
+                    <button type="button" class="btn" onclick=clang()>C</button>
+                    <button type="button" class="btn" onclick=yamllang()>Yaml</button>
+                    <button type="button" class="btn" onclick=jsonlang()>JSon</button>
+                    <button type="button" class="btn" onclick=lisplang()>Lisp</button>
+                </div>
+            </div>
+            <div class="row">
+                <div id="postbuild"></div>  <!-- azslc result editor -->
+            </div>
+            <div class="row">
+                <hr>
+                <div class="panel panel-info">
+                    <div class="panel-heading">DXC's message</div>
+                    <div class="panel-body">
+                        <samp id="dxc_output"></samp>
+                    </div>
+                </div>
+                <button type="button" class="btn" onclick=copy_result()>Copy</button>
+                <div id="postsecondbuild"></div>  <!-- post-DXC result editor -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="src/ace.js" type="text/javascript" charset="utf-8"></script>
+
+<script>
+    var buildDom = require("ace/lib/dom").buildDom;
+    var editor = ace.edit("editor");
+    editor.setOptions({
+        //theme: "ace/theme/monokai",
+        theme: "ace/theme/monokai",
+        mode: "ace/mode/csharp",
+        maxLines: 70,
+        minLines: 30,
+        autoScrollEditorIntoView: true,
+    });
+    var refs = {};
+    function updateToolbar() {
+        refs.saveButton.disabled = editor.session.getValue() === localStorage.savedValue;
+        refs.undoButton.disabled = !editor.session.getUndoManager().hasUndo();
+        refs.redoButton.disabled = !editor.session.getUndoManager().hasRedo();
+    }
+    editor.on("input", updateToolbar);
+
+    var azAuto = $('#toggleauto').prop('checked');
+    var hlAuto = $('#toggleautoDXC').prop('checked');
+    var curAzTimer = -1;
+    var curHlTimer = -1;
+
+    function azsl_change(e){
+        if (azAuto){
+            if (curAzTimer !== -1) {clearTimeout(curAzTimer); curAzTimer = -1; }
+            curAzTimer = setTimeout(onAzTime, 1000);
+        }
+    }
+
+    function hlsl_change(e){
+        if (hlAuto){
+            if (curHlTimer !== -1) {clearTimeout(curHlTimer); curHlTimer = -1;}
+            curHlTimer = setTimeout(onHlTime, 1000);
+        }
+    }
+
+    $('#toggleauto').change(function() {
+        // stuff with events and timers
+        azAuto = $(this).prop('checked');
+        if (curAzTimer !== -1) {clearTimeout(curAzTimer); curAzTimer = -1; }
+    });
+
+    $('#toggleautoDXC').change(function() {
+        hlAuto = $(this).prop('checked');
+        if (curHlTimer !== -1) {clearTimeout(curHlTimer); curHlTimer = -1; }
+    });
+
+    function onAzTime(){
+        build('azsl');
+    }
+
+    function onHlTime(){
+        build('hlsl');
+    }
+
+
+    let startupCode = `ShaderResourceGroupSemantic slot1
+{
+    FrequencyId = 1;
+};
+
+ShaderResourceGroup SRG : slot1
+{
+    struct CB
+    {
+        float4 color;
+    };
+
+    ConstantBuffer<CB> m_uniforms;
+};
+
+float4 MainPS(float2 uv : TEXCOORD0) : SV_Target0
+{
+    return SRG::m_uniforms.color;
+}
+`;
+    editor.session.setValue(localStorage.savedValue || startupCode)
+
+    editor.on("change", azsl_change);
+
+    function save() {
+        localStorage.savedValue = editor.getValue();
+        updateToolbar();
+    }
+    editor.commands.addCommand({
+        name: "save",
+        exec: save,
+        bindKey: { win: "ctrl-s", mac: "cmd-s" }
+    });
+
+    buildDom(
+        ["div", { class: "btn-group", role: "group" },
+            ["button", {
+                ref: "saveButton",
+                onclick: save,
+                class: "btn btn-primary"
+            }, "save"],
+            ["button", {
+                ref: "undoButton",
+                onclick: function() {
+                    editor.undo();
+                },
+                class: "btn btn-primary"
+            }, "undo"],
+            ["button", {
+                ref: "redoButton",
+                onclick: function() {
+                    editor.redo();
+                },
+                class: "btn btn-primary"
+            }, "redo"],
+            ["button", {
+                ref: "reloadButton",
+                onclick: function() {
+                    editor.session.setValue(localStorage.savedValue)
+                    editor.session.getUndoManager().markClean();
+                    updateToolbar();
+                },
+                class: "btn btn-primary"
+            }, "reload"],
+            ["button", {
+                ref: "resetButton",
+                onclick: function() {
+                    editor.session.setValue(startupCode)
+                    editor.session.getUndoManager().markClean();
+                    updateToolbar();
+                },
+                class: "btn btn-primary"
+            }, "reset"],
+        ], savebar, refs);
+
+    // set the second pane editor on the right.
+    var static_editor = ace.edit("postbuild");
+    static_editor.setOptions({
+        theme: "ace/theme/tomorrow_night_eighties",
+        mode: "ace/mode/c_cpp",
+        maxLines: 40,
+        minLines: 23,
+        autoScrollEditorIntoView: true,
+    });
+
+    static_editor.on("change", hlsl_change);
+
+    // set the third pane editor on the bottom
+    var static_editor_bottom = ace.edit("postsecondbuild");
+    static_editor_bottom.setOptions({
+        theme: "ace/theme/tomorrow_night",
+        mode: "ace/mode/assembly_x86",
+        maxLines: 30,
+        minLines: 16,
+        autoScrollEditorIntoView: true,
+    });
+
+</script>
+
+<script src="js/bootstrap.js" type="text/javascript"></script>
+
+<script>
+    // from https://bl.ocks.org/diafygi/90a3e80ca1c2793220e5
+    let b58A = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+    var to_b58_ = function(B,A) {var d=[],s="",i,j,c,n;for(i in B){j=0,c=B[i];s+=c||s.length^i?"":1;while(j in d||c){n=d[j];n=n?n*256+c:c;c=n/58|0;d[j]=n%58;j++}}while(j--)s+=A[d[j]];return s};
+    var to_b58 = (bytes) => { return to_b58_(bytes, b58A); }
+    function str2ab(str) {
+        var enc = new TextEncoder(); //utf8
+        return enc.encode(str);
+      }
+    function base58_encode(str) {
+        var asbytes = str2ab(str)
+        return to_b58(asbytes)
+    }
+</script>
+
+<script>
+    $(document).ready(function() {
+        $(".dropdown-toggle").dropdown();
+    });
+</script>
+
+<script>
+function build(src) {
+    let sourcecode = src === 'azsl' ? editor.session.getValue() : static_editor.session.getValue();
+    let body = base58_encode(sourcecode)
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+        let resultbadgeID = src === 'azsl' ? "result_badge" : "result_badge2";
+        let out_editor = src === 'azsl' ? static_editor : static_editor_bottom;
+        if (this.readyState == 4 && this.status == 200)
+        {
+            let result = JSON.parse(xhttp.responseText);
+            if (result.ok === true)
+            {
+                if (result.err.length > 0)
+                    document.getElementById(resultbadgeID).innerHTML = '<span class="label label-warning">Warning</span>'
+                else
+                    document.getElementById(resultbadgeID).innerHTML = '<span class="label label-success">Success</span>'
+            }
+            else
+            {
+                document.getElementById(resultbadgeID).innerHTML = '<span class="label label-danger">Error</span>'
+            }
+            let outID = src === 'azsl' ? "azslc_output" : "dxc_output";
+            document.getElementById(outID).innerText = result.err ? result.err : "0";
+            out_editor.session.setValue(result.out)
+        }
+        else if (this.status == 0 || this.status >= 100 && this.status < 300) {
+            document.getElementById(resultbadgeID).innerHTML = '<span class="label label-primary">Processing</span>'
+            out_editor.session.setValue("")
+        }
+        else if (this.status >= 500) {
+            document.getElementById(resultbadgeID).innerHTML = '<span class="label label-danger">Serv Error ' + this.status + '</span>'
+            out_editor.session.setValue("")
+        }
+        else if (this.status >= 400) {
+            document.getElementById(resultbadgeID).innerHTML = '<span class="label label-danger">Client Error ' + this.status + '</span>'
+            out_editor.session.setValue("")
+        }
+        else {
+            document.getElementById(resultbadgeID).innerHTML = '<span class="label label-danger">HTTP ' + this.status + '</span>'
+            out_editor.session.setValue("")
+        }
+    };
+    if (src === 'azsl'){
+        xhttp.open("POST", "build?args=" + base58_encode(cmdline.value) + "&astyle=" + astyle.checked + "&compiler=" + document.getElementById("selectedversion").innerText, true);
+        xhttp.send(body);
+    } else {
+        xhttp.open("POST", "build_dxc?args=" + base58_encode(cmdlineDXC.value), true);
+        xhttp.send(body);
+    }
+}
+
+function copy_result(){
+    static_editor.focus();
+    static_editor.selection.selectAll();
+    document.execCommand("copy")
+    static_editor.selection.clearSelection();
+}
+
+function clang(){
+    static_editor.setOptions({mode: "ace/mode/c_cpp"})
+}
+
+function yamllang(){
+    static_editor.setOptions({mode: "ace/mode/yaml"})
+}
+
+function jsonlang(){
+    static_editor.setOptions({mode: "ace/mode/json"})
+}
+
+function lisplang(){
+    static_editor.setOptions({mode: "ace/mode/lisp"})
+}
+
+function fillup_versions_dropdown(){
+    var xhttp = new XMLHttpRequest();
+
+    xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {  // http ok
+            let result = JSON.parse(xhttp.responseText);
+            result.forEach(e => {
+                var li = document.createElement("li");
+                var a = document.createElement("a");
+                var href = document.createAttribute("href");
+                href.value = "#";
+                a.setAttributeNode(href);
+                a.innerText = e;
+                a.addEventListener("click", () => document.getElementById("selectedversion").innerText = e);
+                li.appendChild(a);
+                document.getElementById("versionsdropdown").appendChild(li);
+            });
+            document.getElementById("selectedversion").innerText = result[result.length-1];
+        }
+    };
+
+    xhttp.open("GET", "compilers", true);
+    xhttp.send();
+}
+
+</script>
+
+
+</body>
+</html>
